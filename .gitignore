@@ -1,6 +1,0 @@
-#ignore cache folder
-.cache/**
-logs/**
-**/__pycache__/
-**/**/__pycache__/
-**/*.pt 
