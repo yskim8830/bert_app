@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 import gluonnlp as nlp
 import numpy as np
 from tqdm.notebook import tqdm
-
+from datetime import datetime
 import os
 import logging
 import pandas as pd
@@ -204,6 +204,7 @@ class bert2Question:
         global prochat_path
         
     def question(self, question):
+        starttime = datetime.now().strftime('%Y%m%d%H%M%S%f')[:-3]
         self.modelload = self.data_set['modelload']
         self.mapping = self.data_set['mapping']
         self.tok = self.data_set['tok']
@@ -220,8 +221,9 @@ class bert2Question:
             result = self.modelload(torch.tensor(np.array(tokenized[0], ndmin = 2)).to(self.devices), [tokenized[1]], torch.tensor(np.array(tokenized[2], ndmin = 2)).to(self.devices))
             
             idx = result.argmax().cpu().item()
-            
-            answer = {"question" : seq, "intent" : cate[idx], "reliability" : "{:.2f}%".format(softmax(result,idx))}
+            endtime = datetime.now().strftime('%Y%m%d%H%M%S%f')[:-3]
+            runtime = (datetime.strptime(endtime, '%Y%m%d%H%M%S%f')-datetime.strptime(starttime, '%Y%m%d%H%M%S%f')).total_seconds()
+            answer = {"question" : seq, "intent" : cate[idx], "reliability" : "{:.2f}%".format(softmax(result,idx)),"runtime" : runtime}
             #logger.debug("질의의 카테고리는:", answer["intent"])
             #logger.debug("신뢰도는:", answer["reliability"])
             
