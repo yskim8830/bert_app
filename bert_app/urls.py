@@ -7,6 +7,6 @@ urlpatterns = [
     path('question/', views.question.as_view()), 
     path('question2', views.question2.as_view()),
     path('question2/', views.question2.as_view()), 
-    path('convert', views.convert.as_view()),
+    path('convert', views.convert.as_view()), 
     path('convert/', views.convert.as_view()), 
 ] 
