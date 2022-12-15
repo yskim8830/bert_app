@@ -23,7 +23,7 @@ class learn(threading.Thread):
         self.name = name #Thread Name
         
     def learningBERT(self, data):
-        debug = data['debug']
+        #debug = data['debug']
         
         es_urls = str(data['esUrl']).split(':')
         #검색엔진에 연결한다.
@@ -31,7 +31,9 @@ class learn(threading.Thread):
         
         site_no = data['siteNo']
         dic_path = data['dicPath']
-        mecab_dic_path = data['mecabDicPath']
+        mecab_dic_path = '/usr/local/lib/mecab/dic'
+        if data.get('mecabDicPath') != None :
+            mecab_dic_path = data['mecabDicPath']
         userId = data['userId']
         
         error_msg = ""
@@ -70,7 +72,7 @@ class learn(threading.Thread):
             userdefine = dics.compound()
             
             try:
-                start_date = datetime.now().strftime('%Y%m%d%H%M%S%f')[:-3]
+                #start_date = datetime.now().strftime('%Y%m%d%H%M%S%f')[:-3]
                 new_version = version + 1 #업데이트 되는 버전 정보
                 query_string = {
                     "query": {
@@ -90,7 +92,7 @@ class learn(threading.Thread):
 
                 #패턴
                 patternMapList = es.search_srcoll('@prochat_dialog_pattern',query_string)
-                logger.info("[trainToDev] pattern to dev start [ site : "+str(site_no) +" /  intent count : "+str(len(patternMapList))+" ] ")
+                logger.info("[trainToDev] pattern to dev start [ site : "+str(site_no) +" /  pattern count : "+str(len(patternMapList))+" ] ")
                 patternData = dict()
                 for pattern in patternMapList:
                     pattern = pattern['_source']
@@ -139,30 +141,36 @@ class learn(threading.Thread):
                     _source['keywords'] = str(intent['keywords']).replace(',',' ')
                     
                     sentence = string_util.filterSentence(dialogNm.lower())
-                    morphList = m.morphs(sentence) #품사 제거 등 추가 해야함. 임시
+                    morphList = getWordStringList(m, sentence, 'EC,JX,ETN')
                     
                     #불용어 제거 stopwords
                     sList = []
-                    if stopwords.get(str(site_no)):
-                        for morph in morphList:
+                    for morph in morphList:
+                        if stopwords.get(str(site_no)):
                             if morph not in stopwords[str(site_no)]:
                                 sList.append(morph)
+                        else:
+                            sList.append(morph)
                     orgTerm = ' '.join(sList)
                     orgTermCnt = len(sList)
                     
                     #동의어 처리
                     reList = []
-                    if synonyms.get(str(site_no)):
-                        for morph in morphList:
+                    for morph in morphList:
+                        if synonyms.get(str(site_no)):
                             if morph in synonyms[str(site_no)]: 
                                 reList.append(synonyms[str(site_no)][morph])
                             else:
                                 reList.append(morph)
+                        else:
+                            reList.append(morph)
                     synonymTerm = ' '.join(reList)
                     
-                    questionList.append(synonymTerm)
+                    #questionList.append(synonymTerm)
+                    questionList.append(reList)
                     if(orgTerm != synonymTerm):
-                        questionList.append(orgTerm)
+                        #questionList.append(orgTerm)
+                        questionList.append(sList)
                         
                     _source['term'] = orgTerm
                     _source['term_syn'] = synonymTerm
@@ -189,25 +197,28 @@ class learn(threading.Thread):
                     
                     id = str(question['dialogNo'])
                     sentence = string_util.filterSentence(str(question['question']).lower())
-                    morphList = m.morphs(sentence) #품사 제거 등 추가 해야함. 임시
-                    
+                    morphList = getWordStringList(m, sentence, 'EC,JX,ETN')
                     #불용어 제거 stopwords
                     sList = []
-                    if stopwords.get(str(site_no)):
-                        for morph in morphList:
+                    for morph in morphList:
+                        if stopwords.get(str(site_no)):
                             if morph not in stopwords[str(site_no)]:
                                 sList.append(morph)
+                        else:
+                            sList.append(morph)    
                     orgTerm = ' '.join(sList)
                     orgTermCnt = len(sList)
                     
                     #동의어 처리
                     reList = []
-                    if synonyms.get(str(site_no)):
-                        for morph in morphList:
+                    for morph in morphList:
+                        if synonyms.get(str(site_no)):
                             if morph in synonyms[str(site_no)]: 
                                 reList.append(synonyms[str(site_no)][morph])
                             else:
                                 reList.append(morph)
+                        else:
+                            reList.append(morph)
                     synonymTerm = ' '.join(reList)
                     
                     dialogNm = ''
@@ -234,9 +245,11 @@ class learn(threading.Thread):
                     _source['term_syn']  = synonymTerm
                     _source['keywords']  = string_util.specialReplace(sentence).replace(' ','')
                     
-                    questionList.append(synonymTerm)
+                    #questionList.append(synonymTerm)
+                    questionList.append(reList)
                     if(orgTerm != synonymTerm):
-                        questionList.append(orgTerm)
+                        #questionList.append(orgTerm)
+                        questionList.append(sList)
                         _source['terms']  = orgTerm.replace(' ','') + ' ' + synonymTerm.replace(' ','')
                     else:
                         _source['terms']  = orgTerm.replace(' ','')
@@ -374,6 +387,16 @@ class learn(threading.Thread):
         if res > 1: 
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0) 
             print('Exception raise failure')
+            
+def getWordStringList(mec, sentence, stopTag):
+    result = []
+    morphs = mec.pos(sentence)
+    for word in morphs:
+        if str(stopTag).find(word[1]) == -1:
+            result.append(word[0])
+    return result
+                
+    
 
 
 

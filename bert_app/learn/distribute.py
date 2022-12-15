@@ -128,6 +128,6 @@ class dist(threading.Thread):
                 
         logger.info("[devToSvc] end]")
         if error_msg != '':
-            return {'result' : 'fail', 'error_msg' : error_msg}
+            return {'result' : 'fail', 'msg' : error_msg}
         else :
             return {'result' : 'success'}

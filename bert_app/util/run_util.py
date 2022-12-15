@@ -55,9 +55,9 @@ def status(data):
     version = isRunning(es, site_no)
     es.close()
     if version > -1 :
-        return {'code' : 0, 'result' : 'site '+ str(site_no) +' is no running'}
+        return {'result' : 0, 'msg' : 'site '+ str(site_no) +' is no running'}
     else :
-        return {'code' : 1, 'result' : 'site '+ str(site_no) + ' is running'}
+        return {'result' : 1, 'msg' : 'site '+ str(site_no) + ' is running'}
 
 def save_dict(data):
     es_urls = str(data['esUrl']).split(':')
@@ -69,7 +69,7 @@ def save_dict(data):
     result = string_util.save_dictionary(dic_path,dicList)
     es.close()
     if not result:
-        return {'result' : 'fail'}
+        return {'result' : 'fail', 'msg' : 'dictionary Error.'}
     return {'result' : 'success'}
 
 def recoverySite(data):
@@ -93,7 +93,7 @@ def recoverySite(data):
     except Exception as e:
         error_msg = str(e)
         logger.error(e)
-        return {'result' : 'fail', 'error_msg' : error_msg}
+        return {'result' : 'fail', 'msg' : error_msg}
     finally :
         es.close()
     return {'result' : 'success'}
