@@ -5,7 +5,6 @@ import threading
 import ctypes
 from datetime import datetime
 from konlpy.tag import Mecab
-#from gensim.models import Word2Vec
 from ..util import run_util
 from ..util import file_util
 from ..util import string_util
@@ -257,31 +256,6 @@ class learn(threading.Thread):
                     body['_source'] = _source
                     devQuestion.append(body)
 
-                #word2Vec
-                # logger.info("[word2vecTrain] start [ siteNo :"+str(site_no)+" / size : "+str(len(questionList))+"]")
-                # model = Word2Vec(sentences=questionList, vector_size=100, window=5, min_count=5, workers=4, sg=0)
-                # dev_vector = []
-                
-                # for element in range(0, len(model.wv)):
-                #     body = {}
-                #     _source = {}
-                #     if str(model.wv.index_to_key[element]).strip() != '':
-                #         body['_index'] = "$dev_" + "model_" + str(site_no)
-                #         body['_action'] = 'index'
-                #         body['_id'] = str(site_no)+'_'+str(new_version)+'_'+model.wv.index_to_key[element]
-                #         _source['siteNo'] = site_no
-                #         _source['version'] = new_version
-                #         _source['term'] = model.wv.index_to_key[element]
-                #         for el in range(0, len(model.wv[element])):
-                #             _source['dm_'+str(el)] = model.wv[element][el]
-                #         body['_source'] = _source
-                #         dev_vector.append(body)
-                # if len(dev_vector) > 0:
-                #     try:
-                #         es.bulk(dev_vector)
-                #     except Exception as e:
-                #         logger.error(e)
-                # logger.info("[word2vecTrain] end")
                 #학습데이터를 만든다. BERT
                 logger.info("[trainToDev] BERT Train start [ siteNo :"+str(site_no)+" / size : "+str(len(questionList))+"]")
                 
@@ -294,7 +268,7 @@ class learn(threading.Thread):
                 
                 #분석방식 1,2
                 bertResult.learning() #1. 모델 파일을 저장하는 로직
-                #qVector = bertResult.wordEmbedding() #2. vector로 변환하여 elasticsearch 에 저장하기위해 활용하는 로직
+                #qVector = bertResult.wordEmbedding() #2. vector로 변환하여 elasticsearch 에 저장는 로직
                 
                 #학습결과를 ES 인덱스에 넣는다.
                 """
