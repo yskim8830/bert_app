@@ -25,14 +25,16 @@ def isRunning(es, site_no):
     return version
 
 def createQuestionIndex(es, site_no):
-    """
-    if not es.existIndex("$dev_" + "model_" + str(site_no)):
-        es.createindex("$dev_" + "model_" + str(site_no), '')
-        es.createindex("$svc_" + "model_" + str(site_no) + "_0", '')
-        es.createindex("$svc_" + "model_" + str(site_no) + "_1", '')
-        es.createAlias("$als_" + "model_" + str(site_no) + "_1","$svc_" + "model_" + str(site_no) + "_1")
-    """
+
+    if not es.existIndex(index.dev_idx + index.model + str(site_no)):
+        es.createtemplate('prochat_template01', es.model_template())
+        es.createindex(index.dev_idx + index.model + str(site_no), '')
+        es.createindex(index.svc_idx + index.model + str(site_no) + "_0", '')
+        es.createindex(index.svc_idx + index.model + str(site_no) + "_1", '')
+        es.createAlias(index.als_idx + index.model + str(site_no), index.svc_idx + index.model + str(site_no) + "_1")
+        
     if not es.existIndex(index.dev_idx + index.intent + str(site_no)):
+        es.createtemplate('prochat_template02', es.intent_template())
         es.createindex(index.dev_idx + index.intent + str(site_no), '')
         es.createindex(index.svc_idx + index.intent + str(site_no) + "_0", '')
         es.createindex(index.svc_idx + index.intent + str(site_no) + "_1", '')

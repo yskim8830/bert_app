@@ -1,6 +1,7 @@
 from django.apps import AppConfig
 import configparser
 import torch
+import time
 from torch import nn
 from torch.utils.data import Dataset
 import gluonnlp as nlp
@@ -11,10 +12,16 @@ import os
 import logging
 import pandas as pd
 import random
+import math
 from kobert.utils import get_tokenizer
 from kobert.pytorch_kobert import get_pytorch_kobert_model
 from transformers.optimization import get_cosine_schedule_with_warmup
 from sklearn.preprocessing import LabelEncoder
+
+from sentence_transformers import SentenceTransformer, models
+from ko_sentence_transformers.models import KoBertTransformer
+import concurrent.futures as tpe
+import ThreadPoolExecutorPlus
 
 import json
 logger = logging.getLogger('my')
@@ -44,14 +51,12 @@ class BertAppConfig(AppConfig):
             config = properties["CONFIG"] ## 섹션 선택
             global prochat_path
             prochat_path = properties["CONFIG"]["prochat_path"]
-            #bert_data = bert_util.get_model(prochat_path)
             berts = init_model(prochat_path)
-            #berts.set_init()
-            #berts.set_model(prochat_path)
             global standard_bert
             standard_bert = berts
 
-class bert:
+#1. 모델 파일로 저장하는 학습
+class bert_file:
     def __init__(self, site_no, path, question_file):
         self.site_no = site_no
         self.intent_path = path
@@ -193,44 +198,87 @@ class bert:
         finally:
             return ret
         
-
-class bert2Question:
-    def __init__(self, site_no):
-        #from ..apps import get_model
-        global standard_bert
+#2. 모델 Elasticsearch로 저장하는 학습
+class bert_es:
+    def __init__(self, site_no, path, question_file):
         self.site_no = site_no
-        self.data_set = standard_bert.bert_data[site_no]
+        self.intent_path = path
+        self.question_file = question_file
         
-        global prochat_path
+    def wordEmbedding(self):
+        global standard_bert
+        self.model = standard_bert.esmodel
+        self.device = standard_bert.device
+        # 학습용 데이터셋 불러오기 
+        dataset_train1 = pd.read_csv(os.path.join(self.intent_path,self.question_file))
+        vectors = {}
+        logger.info('os.cpu_count : ' + str(os.cpu_count()))
+        print('os.cpu_count : ',str(os.cpu_count()))
+        total_size = dataset_train1.shape[0]
+        max_job = 100 # 1개의 스레드당 할당되는 embedding 대상 데이터 최소 갯수
+        ##data Frame question vector 변환
+        #worker = math.ceil(total_size / max_job)
         
-    def question(self, question):
-        starttime = datetime.now().strftime('%Y%m%d%H%M%S%f')[:-3]
-        self.modelload = self.data_set['modelload']
-        self.mapping = self.data_set['mapping']
-        self.tok = self.data_set['tok']
-        self.devices = self.data_set['device']
+        start = time.time()
+        print(start)
         
-        self.modelload.load_state_dict(torch.load(os.path.join(prochat_path,'learningModel_'+self.site_no+'.pt'), self.devices))
-        def getIntent(seq):
-            cate = [self.mapping[i] for i in range(0,len(self.mapping))]
-            tmp = [seq]
-            transform = nlp.data.BERTSentenceTransform(self.tok, max_len, pad=True, pair=False)
-            tokenized = transform(tmp)
-            self.modelload.eval()
-            #result = self.modelload(torch.tensor([tokenized[0]]).to(self.devices), [tokenized[1]], torch.tensor(tokenized[2]).to(self.devices))
-            result = self.modelload(torch.tensor(np.array(tokenized[0], ndmin = 2)).to(self.devices), [tokenized[1]], torch.tensor(np.array(tokenized[2], ndmin = 2)).to(self.devices))
-            
-            idx = result.argmax().cpu().item()
-            endtime = datetime.now().strftime('%Y%m%d%H%M%S%f')[:-3]
-            runtime = (datetime.strptime(endtime, '%Y%m%d%H%M%S%f')-datetime.strptime(starttime, '%Y%m%d%H%M%S%f')).total_seconds()
-            answer = {"question" : seq, "intent" : cate[idx], "reliability" : "{:.2f}%".format(softmax(result,idx)),"runtime" : runtime}
-            #logger.debug("질의의 카테고리는:", answer["intent"])
-            #logger.debug("신뢰도는:", answer["reliability"])
-            
-            return answer
+        def embedding(ids):
+            sub = {}
+            num = 1
+            for question , intent  in dataset_train1.values.tolist()[ids*max_job:(ids+1)*max_job]:
+                if num % 100 ==0 :
+                    print('[thread no. ' + str(ids) + ' count ' +str(num)+' complated]', end='')
+                    logger.info('thread no. ' + str(ids) + ' count ' +str(num)+' complated')
+                corpus_embeddings = self.model.encode(question, convert_to_tensor=True, device=self.device)
+                #sub_vector.append(corpus_embeddings.tolist())
+                sub[question] = corpus_embeddings.tolist()
+                num = num +1
+            return sub
         
-        return getIntent(question)
+        #너무 많은 양의 스레드 생성시 컨텍스트 전환이 너무 많이 발생하여 오히려 더 느릴수 있음.
+        #ThreadPoolExecutor
         
+          
+        with ThreadPoolExecutorPlus.ThreadPoolExecutor() as executor:
+            worker = executor._max_workers 
+            worker = 10
+            if total_size > (max_job * worker):
+                max_job = math.ceil(total_size / worker)
+            logger.info('Set 1 Core embedding Max Job : ' + str(max_job))
+            print('Set 1 Core embedding Max Job : ', str(max_job))
+            future_to_map = {executor.submit(embedding, w): w for w in range(worker)}
+            for future in tpe.as_completed(future_to_map):
+                try:
+                    #vectors += future.result()
+                    vectors.update(future.result())
+                except Exception as exc:
+                    print('%r generated an exception: %s' % (exc))
+
+            #vectors = [f.result() for f in future_to_map]
+        """  
+        #ProcessPoolExecutor
+        with tpe.ProcessPoolExecutor() as executor:
+            worker = executor._max_workers
+            for result in executor.map(embedding, range(worker)):
+                vectors += result 
+        """
+        #results = {**dataset_train1.to_dict('records'), **vectors}
+        end = time.time()
+        print("병렬처리 수행 시각", end-start, 's')
+        
+        results = []
+        records = dataset_train1.to_dict('records')
+        for value in records:
+            result = {}
+            result['question'] = value['question']
+            result['intent'] = value['intent']
+            result['vector'] = vectors[value['question']]
+            results.append(result)
+        #dataset_train1['vector'] = vectors
+        #dataset_train1.head()
+        
+        return results
+
 class BERTDataset(Dataset):
     def __init__(self, dataset, sent_idx, label_idx, bert_tokenizer, max_len, pad, pair):
         transform = nlp.data.BERTSentenceTransform(
@@ -281,13 +329,6 @@ def calc_accuracy(X,Y):
     train_acc = (max_indices == Y).sum().data.cpu().numpy()/max_indices.size()[0]
     return train_acc
 
-def softmax(vals, idx):
-    valscpu = vals.cpu().detach().squeeze(0)
-    a = 0
-    for i in valscpu:
-        a += np.exp(i)
-    return ((np.exp(valscpu[idx]))/a).item() * 100
-
 def set_init():
     if torch.cuda.is_available():
         device = torch.device("cuda:0")
@@ -308,8 +349,16 @@ class init_model:
         else:
             self.__device = torch.device('cpu')
             logger.info('device set CPU')
+        logger.info('INIT MODEL')
+        #model 파일용 bert 모델 로드
         self.__bertmodel, self.__vocab = get_pytorch_kobert_model()
         self.__bert_data =  get_model(path, self.__device,self.__bertmodel, self.__vocab)
+        
+        #es 학습용 bert 모델 로드
+        word_embedding_model = KoBertTransformer('monologg/kobert', max_seq_length=75)
+        pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension())
+        model = SentenceTransformer(modules=[word_embedding_model, pooling_model], device=self.__device)
+        self.__es_model =  model
     
     @property
     def device(self):
@@ -317,7 +366,10 @@ class init_model:
     @device.setter
     def device(self, str):
         self.__device = str
-        
+    
+    @property
+    def esmodel(self):
+        return self.__es_model    
     @property
     def bertmodel(self):
         return self.__bertmodel
@@ -360,3 +412,4 @@ def get_model(prochat_path, device, bertmodel, vocab):
         
         berts_data[site_no] = data_set
     return berts_data
+

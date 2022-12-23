@@ -10,8 +10,9 @@ from ..util import file_util
 from ..util import string_util
 from ..util.const import const
 from ..util.file_util import dic
-#from ..util.bert_util import bert
-from ..util.bert_util2 import bert
+from ..util.bert_learning import bert_file
+from ..util.bert_learning import bert_es
+#from ..util.bert_question2 import bert
 from ..util.es_util import elastic_util
 
 logger = logging.getLogger('my')
@@ -33,9 +34,13 @@ class learn(threading.Thread):
         mecab_dic_path = '/usr/local/lib/mecab/dic'
         if data.get('mecabDicPath') != None :
             mecab_dic_path = data['mecabDicPath']
+        self.type = 'file'
+        if data.get('type') != None :
+            self.type = data['type']
         userId = data['userId']
         
         error_msg = ""
+        es.createtemplate('prochat_template03', es.train_state_template())
         es.createindex(index.train_state,'') #$train_state 존재여부 확인 후 생성
         
         #현재 사이트가 학습 중 인지 확인한다.
@@ -264,37 +269,41 @@ class learn(threading.Thread):
                 #file_util.save_question_file2(dic_path,'@prochat_dialog_question_'+site_no,questionMapList) #dialogNo, questionNo 까지 저장
                 
                 #저장한 파일 다시 읽어옴
-                bertResult = bert(site_no, dic_path, '@prochat_dialog_question_'+site_no+'.csv')
-                
-                #분석방식 1,2
-                bertResult.learning() #1. 모델 파일을 저장하는 로직
-                #qVector = bertResult.wordEmbedding() #2. vector로 변환하여 elasticsearch 에 저장는 로직
-                
-                #학습결과를 ES 인덱스에 넣는다.
-                """
-                logger.info("[trainToDev] question to dev search vector list start [ site : "+str(site_no) +" ]")
-                totalDevQuestion = []
-                if len(devQuestion) > 0:
+                if self.type == 'file':
+                    #분석방식 1 start
+                    bertResult = bert_file(site_no, dic_path, '@prochat_dialog_question_'+site_no+'.csv')
+                    bertResult.learning() #1. 모델 파일을 저장하는 로직
+                    #분석방식 1 end
+                elif self.type == 'es':
+                    #분석방식 2 start
+                    bertResult = bert_es(site_no, dic_path, '@prochat_dialog_question_'+site_no+'.csv')
+                    qVector = bertResult.wordEmbedding() #2. vector로 변환하여 elasticsearch 에 저장는 로직
+                    #학습결과를 ES 인덱스에 넣는다.
+                    logger.info("[trainToDev] question to dev search vector list start [ site : "+str(site_no) +" ]")
+                    totalDevQuestion = []
+                    if len(devQuestion) > 0:
+                        
+                        #vector로 변환하여 elasticsearch 에 저장 할시
+                        for question_row, vector in zip(devQuestion, qVector):
+                                source = question_row['_source']
+                                source['question_vec'] = vector['vector']
+                                source['question_vec_2'] = vector['question']
+                                question_row['_source'] = source
+                                totalDevQuestion.append(question_row)
+                        logger.info("complete set vector")
+                        print('complete set vector')
+                        
+                        #vector 저장하지 않을시
+                        #totalDevQuestion = devQuestion
+                        
+                        try:
+                            es.bulk(totalDevQuestion)
+                        except Exception as e:
+                            logger.error(e)
+                    logger.info("[trainToDev] question to dev search vector list end [ site : "+str(site_no) +" /  count : "+str(len(devQuestion))+" ]")
                     
-                    #vector로 변환하여 elasticsearch 에 저장 할시
-                    for question_row, vector in zip(devQuestion, qVector):
-                            source = question_row['_source']
-                            source['question_vec'] = vector['vector']
-                            source['question_vec_2'] = vector['question']
-                            question_row['_source'] = source
-                            totalDevQuestion.append(question_row)
-                    logger.info("complete set vector")
-                    print('complete set vector')
-                    
-                    #vector 저장하지 않을시
-                    #totalDevQuestion = devQuestion
-                    
-                    try:
-                        es.bulk(totalDevQuestion)
-                    except Exception as e:
-                        logger.error(e)
-                logger.info("[trainToDev] question to dev search vector list end [ site : "+str(site_no) +" /  count : "+str(len(devQuestion))+" ]")
-                """        
+                    #분석방식 2 end
+                     
                 #모델 
                 #모델 개수를 count 한다. (학습상관없음)
                 dialogCount = es.countBySearch('@prochat_dialog_model', query_string)

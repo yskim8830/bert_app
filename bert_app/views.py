@@ -5,9 +5,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .util import run_util
-from .util.bert_util import bertQuestion
-from .util.bert_util import convertQuestion
-from .util.bert_util2 import bert2Question
+from .util.bert_question import bertQuestion, convertQuestion
+from .util.bert_question2 import bertQuestion2
 from .learn import learning
 from .learn import distribute
 
@@ -50,18 +49,49 @@ class train(APIView):
         elif mode == 'dic':
             result_dic = run_util.save_dict(data)
             
-        return Response(result_dic)
-    
+        return Response(result_dic, content_type='application/json; charset=utf-8')
+
+
 class question(APIView):
+    def get(self , request):
+        site_no = request.query_params.get('siteNo')
+        question = request.query_params.get('query')
+        bert_query = bertQuestion(site_no)
+        result_answer = bert_query.question(question)
+        return Response(result_answer, content_type='application/json; charset=utf-8')
+    
+    def post(self , request):
+        data = json.loads(request.body) #파라미터 로드
+        site_no = str(data['siteNo'])
+        question = str(data['query'])
+        bert_query = bertQuestion(site_no)
+        result_answer = bert_query.question(question)
+        return Response(result_answer, content_type='application/json; charset=utf-8')
+ 
+class convert(APIView):
+    def get(self , request):
+        question = request.query_params.get('query')
+        bert_query = convertQuestion()
+        result_answer = bert_query.convert_vector(question)
+        return Response(result_answer, content_type='application/json; charset=utf-8')
+    
+    def post(self , request):
+        data = json.loads(request.body) #파라미터 로드
+        question = str(data['query'])
+        bert_query = convertQuestion()
+        result_answer = bert_query.convert_vector(question)
+        return Response(result_answer, content_type='application/json; charset=utf-8')
+    
+class question2(APIView):
     def get(self , request):
         site_no = request.query_params.get('siteNo')
         question = request.query_params.get('query')
         searchip = request.query_params.get('searchIp')
         version = request.query_params.get('version')
-        bert_query = bertQuestion(site_no, searchip, version)
+        bert_query = bertQuestion2(site_no, searchip, version)
         #result_answer = bert_query.question(question)
         result_answer = bert_query.question_vector(question)
-        return Response(result_answer)
+        return Response(result_answer, content_type='application/json; charset=utf-8')
     
     def post(self , request):
         data = json.loads(request.body) #파라미터 로드
@@ -69,37 +99,14 @@ class question(APIView):
         question = str(data['query'])
         searchip = str(data['searchIp'])
         version = str(data['version'])
-        bert_query = bertQuestion(site_no, searchip, version)
+        bert_query = bertQuestion2(site_no, searchip, version)
         #result_answer = bert_query.question(question)
         result_answer = bert_query.question_vector(question)
-        return Response(result_answer)
-
-class question2(APIView):
-    def get(self , request):
-        site_no = request.query_params.get('siteNo')
-        question = request.query_params.get('query')
-        bert_query = bert2Question(site_no)
-        result_answer = bert_query.question(question)
-        return Response(result_answer)
+        return Response(result_answer, content_type='application/json; charset=utf-8')
     
-    def post(self , request):
-        data = json.loads(request.body) #파라미터 로드
-        site_no = str(data['siteNo'])
-        question = str(data['query'])
-        bert_query = bert2Question(site_no)
-        result_answer = bert_query.question(question)
-        return Response(result_answer)
- 
-class convert(APIView):
-    def get(self , request):
-        question = request.query_params.get('query')
-        bert_query = convertQuestion()
-        result_answer = bert_query.convert_vector(question)
-        return Response(result_answer)
     
-    def post(self , request):
-        data = json.loads(request.body) #파라미터 로드
-        question = str(data['query'])
-        bert_query = convertQuestion()
-        result_answer = bert_query.convert_vector(question)
-        return Response(result_answer)
+    
+class test_request(APIView):
+    def get(self , request):
+        
+        return Response({'result' : "blank"})

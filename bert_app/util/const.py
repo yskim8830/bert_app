@@ -3,11 +3,12 @@ class const():
     def __init__(self):
         
         self._train_state = '$train_state'
-        self._dev_idx = '$xdev_'
-        self._svc_idx = '$xsvc_'
-        self._als_idx = '$xals_'
+        self._dev_idx = '$cdev_'
+        self._svc_idx = '$csvc_'
+        self._als_idx = '$cals_'
         self._intent = 'intent_'
         self._question = 'question_'
+        self._model = 'model_'
     
     @property    
     def train_state(self):
@@ -27,3 +28,6 @@ class const():
     @property    
     def question(self):
         return self._question
+    @property    
+    def model(self):
+        return self._model

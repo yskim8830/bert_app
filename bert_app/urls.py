@@ -9,4 +9,5 @@ urlpatterns = [
     path('question2/', views.question2.as_view()), 
     path('convert', views.convert.as_view()), 
     path('convert/', views.convert.as_view()), 
+    path('test/request/', views.test_request.as_view()), 
 ] 

@@ -19,6 +19,13 @@ class elastic_util:
     def getInfo(self):
         return self.es.info()
     
+    #create template
+    def createtemplate(self, name, mapping):
+        if self.es.indices.exists_template(name=name):
+            pass
+        else:
+            return self.es.indices.put_template(name=name, body=mapping)
+        
     #existIndex
     def existIndex(self, idx):
         return self.es.indices.exists(index=idx)
@@ -266,6 +273,7 @@ class elastic_util:
                     },
                     "question_vec": {
                         "type": "elastiknn_dense_float_vector",
+                        #BERT
                         "elastiknn": {
                             "dims": 768,
                             "model": "lsh",
@@ -329,6 +337,385 @@ class elastic_util:
                 }
             }
         }
-
+        
+    def train_state_template(self):
+        return {
+            "index_patterns": [
+                "$bert_train_state*"
+            ],
+            "settings": {
+                "index.mapping.ignore_malformed": True,
+                "index": {
+                "number_of_shards": "5",
+                "elastiknn": True,
+                "auto_expand_replicas": "0-1",
+                "analysis": {
+                    "analyzer": {
+                        "whitespace_analyzer": {
+                            "filter": [
+                            "lowercase",
+                            "trim"
+                            ],
+                            "tokenizer": "my_whitespace"
+                        }
+                    },
+                    "tokenizer": {
+                        "my_whitespace": {
+                            "type": "whitespace",
+                            "max_token_length": "60"
+                        }
+                    }
+                }
+                },
+                "index.mapping.total_fields.limit": 99999999
+            },
+            "mappings": {
+                "dynamic_templates": [
+                    {
+                        "search_string_01": {
+                            "match": "id",
+                            "match_mapping_type": "long",
+                            "mapping": {
+                            "type": "long"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_05": {
+                            "match": "*site*",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_06": {
+                            "match": "*version*",
+                            "match_mapping_type": "long",
+                            "mapping": {
+                            "type": "long"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_07": {
+                            "match": "state",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_08": {
+                            "match": "*keyword*",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_09": {
+                            "match": "*_date",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "type": "date",
+                            "format": "yyyyMMddHHmmssSSS"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_10": {
+                            "match": "*_user",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+        
+    def intent_template(self):
+        return {
+            "index_patterns": [
+                "$*intent_*"
+            ],
+            "settings": {
+                "index.mapping.ignore_malformed": True,
+                "index": {
+                "number_of_shards": "5",
+                "elastiknn": True,
+                "auto_expand_replicas": "0-1",
+                "analysis": {
+                    "analyzer": {
+                    "whitespace_analyzer": {
+                        "filter": [
+                        "lowercase",
+                        "trim"
+                        ],
+                        "tokenizer": "my_whitespace"
+                    }
+                    },
+                    "tokenizer": {
+                    "my_whitespace": {
+                        "type": "whitespace",
+                        "max_token_length": "60"
+                    }
+                    }
+                },
+                "similarity": {
+                    "pro_tfidf": {
+                    "type": "scripted",
+                    "script": {
+                        "source": "double norm = (doc.freq); return query.boost  *norm;"
+                    }
+                    }
+                }
+                },
+                "index.mapping.total_fields.limit": 99999999
+            },
+            "mappings": {
+                "dynamic_templates": [
+                    {
+                        "search_string_01": {
+                            "match": "id",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_02": {
+                            "match": "dialogNm",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_03": {
+                            "match": "dialogTerm",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_05": {
+                            "match": "*No",
+                            "match_mapping_type": "long",
+                            "mapping": {
+                            "type": "long"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_06": {
+                            "match": "*version*",
+                            "match_mapping_type": "long",
+                            "mapping": {
+                            "type": "long"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_07": {
+                            "match": "useYn",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_08": {
+                            "match": "*keyword*",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_08": {
+                            "match": "*term*",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text",
+                            "similarity": "pro_tfidf"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_09": {
+                            "match": "*Date",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "type": "date",
+                            "format": "yyyyMMddHHmmssSSS"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_11": {
+                            "match": "pattern",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_12": {
+                            "match": "*User",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_12": {
+                            "match": "desc",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+        
+    def model_template(self):
+        return {
+            "index_patterns": [
+                "$*_model_*"
+            ],
+            "settings": {
+                "index.mapping.ignore_malformed": True,
+                "index": {
+                "number_of_shards": "5",
+                "auto_expand_replicas": "0-1",
+                "analysis": {
+                    "analyzer": {
+                    "whitespace_analyzer": {
+                        "filter": [
+                        "lowercase",
+                        "trim"
+                        ],
+                        "tokenizer": "my_whitespace"
+                    }
+                    },
+                    "tokenizer": {
+                    "my_whitespace": {
+                        "type": "whitespace",
+                        "max_token_length": "60"
+                    }
+                    }
+                },
+                "similarity": {
+                    "pro_tfidf": {
+                    "type": "scripted",
+                    "script": {
+                        "source": "double norm = (doc.freq); return query.boost  *norm;"
+                    }
+                    }
+                }
+                },
+                "index.mapping.total_fields.limit": 99999999
+            },
+            "mappings": {
+                "dynamic_templates": [
+                    {
+                        "search_string_01": {
+                            "match": "id",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_02": {
+                            "match": "term",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_04": {
+                            "match": "*site*",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "analyzer": "whitespace_analyzer",
+                            "type": "text"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_05": {
+                            "match": "dm_*",
+                            "match_mapping_type": "double",
+                            "mapping": {
+                            "type": "float"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_05": {
+                            "match": "*No",
+                            "match_mapping_type": "long",
+                            "mapping": {
+                            "type": "long"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_06": {
+                            "match": "*version*",
+                            "match_mapping_type": "long",
+                            "mapping": {
+                            "type": "long"
+                            }
+                        }
+                    },
+                    {
+                        "search_string_07": {
+                            "match": "*_date",
+                            "match_mapping_type": "string",
+                            "mapping": {
+                            "type": "date",
+                            "format": "yyyyMMddHHmmssSSS"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
 #es = elastic_util('192.168.0.5', '6251')
 #print(es.countBySearch('@prochat_dic', ''))

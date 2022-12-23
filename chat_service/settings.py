@@ -32,8 +32,7 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
-    #'bert_app.util.bert_util.BertAppConfig',
-    'bert_app.util.bert_util2.BertAppConfig',
+    'bert_app.util.bert_learning.BertAppConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
