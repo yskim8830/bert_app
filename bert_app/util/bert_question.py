@@ -26,13 +26,13 @@ class bertQuestion:
         self.tok = self.data_set['tok']
         self.devices = self.data_set['device']
         
-        self.modelload.load_state_dict(torch.load(os.path.join(prochat_path,'learningModel_'+self.site_no+'.pt'), self.devices))
+        # self.modelload.load_state_dict(torch.load(os.path.join(prochat_path,'learningModel_'+self.site_no+'.pt'), self.devices))
         def getIntent(seq):
             cate = [self.mapping[i] for i in range(0,len(self.mapping))]
             tmp = [seq]
             transform = nlp.data.BERTSentenceTransform(self.tok, max_len, pad=True, pair=False)
             tokenized = transform(tmp)
-            self.modelload.eval()
+            # self.modelload.eval()
             #result = self.modelload(torch.tensor([tokenized[0]]).to(self.devices), [tokenized[1]], torch.tensor(tokenized[2]).to(self.devices))
             result = self.modelload(torch.tensor(np.array(tokenized[0], ndmin = 2)).to(self.devices), [tokenized[1]], torch.tensor(np.array(tokenized[2], ndmin = 2)).to(self.devices))
             

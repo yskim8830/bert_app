@@ -18,17 +18,16 @@ class bertQuestion2:
         self.device = standard_bert.device
 
     def question_vector(self, question):
-        
         starttime = datetime.now().strftime('%Y%m%d%H%M%S%f')[:-3]
-        corpus_embeddings = self.model.encode(question, convert_to_tensor=True, device=self.device)
-        
+        # corpus_embeddings = self.model.encode(question, convert_to_tensor=True, device=self.device)
+        corpus_embeddings = self.model.encode(sentences=question, device=self.device)
         #개발 일 경우 version >-1 이상이고 version -1 일 경우 운영
-        """
         q_index = index.als_idx+index.question
         if int(self.version) > -1:
             q_index = index.dev_idx+index.question
         
-        total_results = self.es.search(q_index+str(self.site_no), self.es.question_vector_query(self.version, [vector.tolist() for vector in corpus_embeddings]))
+        # total_results = self.es.search(q_index+str(self.site_no), self.es.question_vector_query(self.version, [vector.tolist() for vector in corpus_embeddings]))
+        total_results = self.es.search(q_index+str(self.site_no), self.es.question_vector_query(self.version, corpus_embeddings))
         endtime = datetime.now().strftime('%Y%m%d%H%M%S%f')[:-3]
         runtime = (datetime.strptime(endtime, '%Y%m%d%H%M%S%f')-datetime.strptime(starttime, '%Y%m%d%H%M%S%f')).total_seconds()
         
@@ -40,5 +39,4 @@ class bertQuestion2:
         result = {"results" : results, "question" : question, "runtime" : runtime}      
         self.es.close()
         return result
-        """
         return {"result" : "blank"}

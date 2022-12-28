@@ -6,7 +6,7 @@ from torch import nn
 from torch.utils.data import Dataset
 import gluonnlp as nlp
 import numpy as np
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from datetime import datetime
 import os
 import logging
@@ -28,7 +28,7 @@ logger = logging.getLogger('my')
 
 ## Setting parameters
 max_len = 64
-batch_size = 64
+batch_size = 32
 warmup_ratio = 0.1
 num_epochs = 10
 max_grad_norm = 1
@@ -389,27 +389,27 @@ def get_model(prochat_path, device, bertmodel, vocab):
     berts_data = {}
     for question_file in file_list:
         site_no = question_file.replace(file_name+'_', '').replace(file_ext, '')
-        dataset_cate = pd.read_csv(os.path.join(prochat_path,question_file))
-        
-        # 라벨링
-        encoder = LabelEncoder()
-        encoder.fit(dataset_cate['intent'])
-        dataset_cate['intent'] = encoder.transform(dataset_cate['intent'])
-        
-        # 라벨링된 카테고리 매핑
-        mapping = dict(zip(range(len(encoder.classes_)), encoder.classes_))
-        mapping_len = len(mapping)
-        
-        tokenizer = get_tokenizer()
-        tok = nlp.data.BERTSPTokenizer(tokenizer, vocab, lower=False)
-        
-        modelload = BERTClassifier(bertmodel,  dr_rate=0.5, num_classes=mapping_len).to(device)
-        #modelload.load_state_dict(torch.load(os.path.join(prochat_path,'learningModel_'+site_no+'.pt'), device))
-        
-        data_set = {'modelload' : modelload, 'mapping' : mapping, 'tok' : tok, 'device' : device}
-        logger.info('bert data set, site_no is ' + str(site_no) + ' : load success.')
-        
-        
-        berts_data[site_no] = data_set
+        if os.path.isfile(os.path.join(prochat_path,'learningModel_'+site_no+'.pt')) :
+            dataset_cate = pd.read_csv(os.path.join(prochat_path,question_file))
+            
+            # 라벨링
+            encoder = LabelEncoder()
+            encoder.fit(dataset_cate['intent'])
+            dataset_cate['intent'] = encoder.transform(dataset_cate['intent'])
+            
+            # 라벨링된 카테고리 매핑
+            mapping = dict(zip(range(len(encoder.classes_)), encoder.classes_))
+            mapping_len = len(mapping)
+            
+            tokenizer = get_tokenizer()
+            tok = nlp.data.BERTSPTokenizer(tokenizer, vocab, lower=False)
+            
+            modelload = BERTClassifier(bertmodel,  dr_rate=0.5, num_classes=mapping_len).to(device)
+            modelload.load_state_dict(torch.load(os.path.join(prochat_path,'learningModel_'+site_no+'.pt'), device))
+            modelload.eval()
+            data_set = {'modelload' : modelload, 'mapping' : mapping, 'tok' : tok, 'device' : device}
+            logger.info('bert data set, site_no is ' + str(site_no) + ' : load success.')
+            
+            berts_data[site_no] = data_set
     return berts_data
 
