@@ -64,5 +64,5 @@ class convertQuestion:
         global standard_bert
         self.model = standard_bert.esmodel
     def convert_vector(self, question):
-        corpus_embeddings = self.model.encode(question, convert_to_tensor=True)
+        corpus_embeddings = self.model.encode(question, convert_to_numpy=True)
         return [vector.tolist() for vector in corpus_embeddings]
