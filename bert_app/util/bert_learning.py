@@ -115,7 +115,7 @@ class bert_file:
             encoder_test.fit(new_data['intent'])
             new_data['intent'] = encoder_test.transform(new_data['intent'])
             # new_data.head()
-            
+            torch.multiprocessing.set_start_method('spawn')
             # 라벨링된 카테고리 매핑
             mapping = dict(zip(range(len(encoder.classes_)), encoder.classes_))
             mapping_len = len(mapping)
@@ -345,7 +345,7 @@ class init_model:
     def __init__(self, path):
         if torch.cuda.is_available():
             self.__device = torch.device("cuda:0")
-            logger.info('device set GPU')
+            logger.info(str(torch.cuda.is_available()))
         else:
             self.__device = torch.device('cpu')
             logger.info('device set CPU')

@@ -2,7 +2,7 @@
 class const():
     def __init__(self):
         
-        self._train_state = '$train_state'
+        self._train_state = '$ctrain_state'
         self._dev_idx = '$cdev_'
         self._svc_idx = '$csvc_'
         self._als_idx = '$cals_'

@@ -320,7 +320,7 @@ class learn(threading.Thread):
                 mapData['version'] = version
                 mapData['state'] = 'n'
                 mapData['modify_date'] = end_date
-                es.updateData('$train_state', site_no, mapData)
+                es.updateData(index.train_state, site_no, mapData)
                 
                 
                 #learning log에 학습결과를 적재한다.

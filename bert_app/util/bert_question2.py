@@ -39,4 +39,4 @@ class bertQuestion2:
         result = {"results" : results, "question" : question, "runtime" : runtime}      
         self.es.close()
         return result
-        return {"result" : "blank"}
+        #return {"result" : "blank"}
